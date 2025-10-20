@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => '__root__',
-        'pretty_version' => '1.0.0+no-version-set',
-        'version' => '1.0.0.0',
-        'reference' => null,
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
+        'reference' => 'e9cdf522e105b59f2b8144a7ba9484bf68c9c1c6',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -11,9 +11,9 @@
     ),
     'versions' => array(
         '__root__' => array(
-            'pretty_version' => '1.0.0+no-version-set',
-            'version' => '1.0.0.0',
-            'reference' => null,
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
+            'reference' => 'e9cdf522e105b59f2b8144a7ba9484bf68c9c1c6',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -250,6 +250,15 @@
             'reference' => '57b8f7efe40333cdb925700891c7d7465325d3b1',
             'type' => 'library',
             'install_path' => __DIR__ . '/../laravel/prompts',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'laravel/sanctum' => array(
+            'pretty_version' => 'v4.1.1',
+            'version' => '4.1.1.0',
+            'reference' => 'a360a6a1fd2400ead4eb9b6a9c1bb272939194f5',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../laravel/sanctum',
             'aliases' => array(),
             'dev_requirement' => false,
         ),

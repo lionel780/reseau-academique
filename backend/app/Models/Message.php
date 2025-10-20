@@ -2,22 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Message extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'sender_id',
         'receiver_id',
+        'group_id',
         'content',
-        'read_at'
-    ];
-
-    protected $casts = [
-        'read_at' => 'datetime'
     ];
 
     public function sender()
@@ -29,4 +22,9 @@ class Message extends Model
     {
         return $this->belongsTo(User::class, 'receiver_id');
     }
-}
+
+    public function group()
+    {
+        return $this->belongsTo(Groupe::class, 'group_id');
+    }
+} 

@@ -1,0 +1,126 @@
+@startuml Diagramme de Cas d'Utilisation - Réseau Académique
+
+' Définition des styles
+skinparam actorStyle awesome
+skinparam usecaseFontSize 14
+skinparam actorFontSize 14
+skinparam usecaseBackgroundColor #F8F9FA
+skinparam usecaseBorderColor #DEE2E6
+
+' Acteurs
+actor "Visiteur" as Visiteur
+actor "Étudiant" as Etudiant
+actor "Enseignant" as Enseignant
+actor "Administrateur" as Admin
+
+' Relations d'héritage entre acteurs
+Etudiant --|> Visiteur
+Enseignant --|> Visiteur
+Admin --|> Visiteur
+
+' Cas d'utilisation - Authentification
+rectangle "Authentification" {
+  usecase "S'inscrire" as UC1
+  usecase "Se connecter" as UC2
+  usecase "Se déconnecter" as UC3
+  usecase "Consulter son profil" as UC4
+  usecase "Modifier son profil" as UC5
+}
+
+' Cas d'utilisation - Actualités
+rectangle "Actualités" {
+  usecase "Consulter les actualités" as UC6
+  usecase "Publier une actualité" as UC7
+  usecase "Modifier une actualité" as UC8
+  usecase "Supprimer une actualité" as UC9
+}
+
+' Cas d'utilisation - Événements
+rectangle "Événements" {
+  usecase "Consulter les événements" as UC10
+  usecase "Participer à un événement" as UC11
+  usecase "Créer un événement" as UC12
+  usecase "Modifier un événement" as UC13
+  usecase "Supprimer un événement" as UC14
+}
+
+' Cas d'utilisation - Messagerie
+rectangle "Messagerie" {
+  usecase "Consulter ses messages" as UC15
+  usecase "Envoyer un message" as UC16
+  usecase "Marquer un message comme lu" as UC17
+}
+
+' Cas d'utilisation - Cours
+rectangle "Cours" {
+  usecase "Consulter les cours disponibles" as UC18
+  usecase "S'inscrire à un cours" as UC19
+  usecase "Créer un cours" as UC20
+  usecase "Modifier un cours" as UC21
+  usecase "Supprimer un cours" as UC22
+  usecase "Ajouter un document à un cours" as UC23
+  usecase "Télécharger un document" as UC24
+}
+
+' Cas d'utilisation - Administration
+rectangle "Administration" {
+  usecase "Gérer les utilisateurs" as UC25
+  usecase "Valider les inscriptions" as UC26
+  usecase "Consulter les statistiques" as UC27
+}
+
+' Relations Visiteur
+Visiteur --> UC1
+Visiteur --> UC2
+Visiteur --> UC6
+Visiteur --> UC10
+
+' Relations Étudiant
+Etudiant --> UC3
+Etudiant --> UC4
+Etudiant --> UC5
+Etudiant --> UC11
+Etudiant --> UC15
+Etudiant --> UC16
+Etudiant --> UC17
+Etudiant --> UC18
+Etudiant --> UC19
+Etudiant --> UC24
+
+' Relations Enseignant
+Enseignant --> UC3
+Enseignant --> UC4
+Enseignant --> UC5
+Enseignant --> UC7
+Enseignant --> UC8
+Enseignant --> UC12
+Enseignant --> UC13
+Enseignant --> UC15
+Enseignant --> UC16
+Enseignant --> UC17
+Enseignant --> UC20
+Enseignant --> UC21
+Enseignant --> UC23
+
+' Relations Administrateur
+Admin --> UC3
+Admin --> UC4
+Admin --> UC5
+Admin --> UC7
+Admin --> UC8
+Admin --> UC9
+Admin --> UC12
+Admin --> UC13
+Admin --> UC14
+Admin --> UC15
+Admin --> UC16
+Admin --> UC17
+Admin --> UC20
+Admin --> UC21
+Admin --> UC22
+Admin --> UC23
+Admin --> UC25
+Admin --> UC26
+Admin --> UC27
+
+@enduml

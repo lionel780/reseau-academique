@@ -1,0 +1,97 @@
+@startuml Diagramme de Séquence - Messagerie Réseau Académique
+
+' Définition des styles
+skinparam sequenceArrowThickness 2
+skinparam sequenceArrowColor #007BFF
+skinparam sequenceLifeLineBorderColor #6C757D
+skinparam sequenceGroupBackgroundColor #F8F9FA
+skinparam sequenceGroupBorderColor #DEE2E6
+
+' Participants
+actor "Utilisateur" as User
+participant "Frontend\nComponent" as Frontend
+participant "MessageService" as MessageService
+participant "Backend\nMessageController" as Backend
+database "Base de données" as DB
+
+' Séquence de consultation des conversations
+group Consultation des conversations
+    User -> Frontend : Accède à la messagerie
+    activate Frontend
+    Frontend -> MessageService : getConversations()
+    activate MessageService
+    MessageService -> Backend : GET /conversations avec token JWT
+    activate Backend
+    Backend -> DB : Récupère les conversations de l'utilisateur
+    activate DB
+    DB --> Backend : Liste des conversations
+    deactivate DB
+    Backend --> MessageService : Retourne les conversations
+    deactivate Backend
+    MessageService --> Frontend : Affiche les conversations
+    deactivate MessageService
+    Frontend --> User : Affiche la liste des conversations
+    deactivate Frontend
+end
+
+' Séquence de consultation des messages d'une conversation
+group Consultation des messages
+    User -> Frontend : Sélectionne une conversation
+    activate Frontend
+    Frontend -> MessageService : getMessages(userId)
+    activate MessageService
+    MessageService -> Backend : GET /messages/{userId} avec token JWT
+    activate Backend
+    Backend -> DB : Récupère les messages entre les deux utilisateurs
+    activate DB
+    DB --> Backend : Liste des messages
+    deactivate DB
+    Backend --> MessageService : Retourne les messages
+    deactivate Backend
+    MessageService --> Frontend : Affiche les messages
+    deactivate MessageService
+    Frontend --> User : Affiche la conversation
+    deactivate Frontend
+end
+
+' Séquence d'envoi d'un message
+group Envoi d'un message
+    User -> Frontend : Rédige et envoie un message
+    activate Frontend
+    Frontend -> MessageService : sendMessage(userId, content)
+    activate MessageService
+    MessageService -> Backend : POST /messages avec token JWT
+    activate Backend
+    Backend -> DB : Enregistre le message
+    activate DB
+    DB --> Backend : Message enregistré
+    deactivate DB
+    Backend --> MessageService : Confirmation d'envoi
+    deactivate Backend
+    MessageService --> Frontend : Message envoyé avec succès
+    deactivate MessageService
+    Frontend --> User : Affiche le message dans la conversation
+    deactivate Frontend
+end
+
+' Séquence de marquage d'un message comme lu
+group Marquage d'un message comme lu
+    User -> Frontend : Ouvre un message non lu
+    activate Frontend
+    Frontend -> MessageService : markAsRead(messageId)
+    activate MessageService
+    MessageService -> Backend : PATCH /messages/{messageId}/read avec token JWT
+    activate Backend
+    Backend -> DB : Marque le message comme lu
+    activate DB
+    DB --> Backend : Message mis à jour
+    deactivate DB
+    Backend --> MessageService : Confirmation de mise à jour
+    deactivate Backend
+    MessageService --> Frontend : Message marqué comme lu
+    deactivate MessageService
+    Frontend --> User : Affiche le message comme lu
+    deactivate Frontend
+end
+
+@enduml

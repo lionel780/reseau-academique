@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Tymon\JWTAuth\Facades\JWTAuth;
-use Tymon\JWTAuth\Exceptions\JWTException;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -17,54 +15,75 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'nom' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6',
-            'role' => 'required|in:etudiant,enseignant,administrateur',
+            'password' => 'required|string|min:8|confirmed',
+            'role' => 'required|in:enseignant,etudiant,administrateur',
+            'departement' => 'nullable|string|max:255',
+            'filiere' => 'nullable|string|max:255',
         ]);
 
         $user = User::create([
-            'nom' => $request->nom,
+            'name' => $request->name,
             'prenom' => $request->prenom,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role' => $request->role,
+            'departement' => $request->departement,
+            'filiere' => $request->filiere,
         ]);
 
-        $token = JWTAuth::fromUser($user);
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
             'user' => $user,
-            'token' => $token
+            'prenom' => $user->prenom,
+            'role' => $user->role,
+            'departement' => $user->departement,
+            'filiere' => $user->filiere,
         ], 201);
     }
 
     /**
-     * Login user and return JWT
+     * Login user and create token
      */
     public function login(Request $request)
     {
-        $credentials = $request->only('email', 'password');
-        try {
-            if (!$token = JWTAuth::attempt($credentials)) {
-                return response()->json(['error' => 'Email ou mot de passe incorrect'], 401);
-            }
-        } catch (JWTException $e) {
-            return response()->json(['error' => 'Impossible de créer le token'], 500);
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+            throw ValidationException::withMessages([
+                'email' => ['The provided credentials are incorrect.'],
+            ]);
         }
-        $user = Auth::user();
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
         return response()->json([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
             'user' => $user,
-            'token' => $token
+            'prenom' => $user->prenom,
+            'role' => $user->role,
+            'departement' => $user->departement,
+            'filiere' => $user->filiere,
         ]);
     }
 
     /**
-     * Get authenticated user profile
+     * Logout user (revoke tokens)
      */
-    public function profile()
+    public function logout(Request $request)
     {
-        return response()->json(Auth::user());
+        $request->user()->currentAccessToken()->delete();
+        return response()->json(['message' => 'Logged out']);
     }
-}
+} 

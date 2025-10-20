@@ -1,0 +1,196 @@
+@startuml Diagramme de Classes - Réseau Académique
+
+' Définition des couleurs et styles
+skinparam classAttributeIconSize 0
+skinparam classFontStyle bold
+skinparam classFontSize 14
+skinparam classBackgroundColor #F8F9FA
+skinparam classBorderColor #DEE2E6
+
+' Entités principales
+class User {
+  +id: int
+  +nom: string
+  +prenom: string
+  +email: string
+  +password: string
+  +role: string
+  +created_at: datetime
+  +updated_at: datetime
+  +register()
+  +login()
+  +logout()
+  +getProfile()
+}
+
+class Message {
+  +id: int
+  +sender_id: int
+  +receiver_id: int
+  +content: string
+  +read: boolean
+  +created_at: datetime
+  +updated_at: datetime
+  +send()
+  +markAsRead()
+}
+
+class Actualite {
+  +id: int
+  +titre: string
+  +contenu: string
+  +image: string
+  +auteur_id: int
+  +created_at: datetime
+  +updated_at: datetime
+  +create()
+  +update()
+  +delete()
+}
+
+class Evenement {
+  +id: int
+  +titre: string
+  +description: string
+  +date: datetime
+  +lieu: string
+  +organisateur_id: int
+  +created_at: datetime
+  +updated_at: datetime
+  +create()
+  +update()
+  +delete()
+  +participer()
+}
+
+class Cours {
+  +id: int
+  +titre: string
+  +description: string
+  +enseignant_id: int
+  +created_at: datetime
+  +updated_at: datetime
+  +create()
+  +update()
+  +delete()
+  +inscrire()
+}
+
+class Document {
+  +id: int
+  +titre: string
+  +description: string
+  +fichier: string
+  +cours_id: int
+  +created_at: datetime
+  +updated_at: datetime
+  +upload()
+  +download()
+  +delete()
+}
+
+' Services
+class AuthService {
+  +register(userData)
+  +login(email, password)
+  +logout()
+  +getCurrentUser()
+  +getProfile()
+}
+
+class MessageService {
+  +getConversations()
+  +getMessages(userId)
+  +sendMessage(userId, content)
+  +markAsRead(messageId)
+}
+
+class ActualiteService {
+  +getActualites()
+  +getActualite(id)
+  +createActualite(data)
+  +updateActualite(id, data)
+  +deleteActualite(id)
+}
+
+class EvenementService {
+  +getEvenements()
+  +getEvenement(id)
+  +createEvenement(data)
+  +updateEvenement(id, data)
+  +deleteEvenement(id)
+  +participer(id)
+}
+
+class CoursService {
+  +getCours()
+  +getCours(id)
+  +createCours(data)
+  +updateCours(id, data)
+  +deleteCours(id)
+  +inscrire(id)
+}
+
+' Contrôleurs
+class AuthController {
+  +register(request)
+  +login(request)
+  +profile()
+}
+
+class MessageController {
+  +getConversations()
+  +getMessages(userId)
+  +sendMessage(request)
+  +markAsRead(messageId)
+}
+
+class ActualiteController {
+  +index()
+  +show(id)
+  +store(request)
+  +update(request, id)
+  +destroy(id)
+}
+
+class EvenementController {
+  +index()
+  +show(id)
+  +store(request)
+  +update(request, id)
+  +destroy(id)
+  +participer(id)
+}
+
+class CoursController {
+  +index()
+  +show(id)
+  +store(request)
+  +update(request, id)
+  +destroy(id)
+  +inscrire(id)
+}
+
+' Relations
+User "1" -- "n" Message : envoie >
+User "1" -- "n" Message : reçoit >
+User "1" -- "n" Actualite : publie >
+User "1" -- "n" Evenement : organise >
+User "1" -- "n" Cours : enseigne >
+User "n" -- "n" Cours : suit >
+User "n" -- "n" Evenement : participe >
+Cours "1" -- "n" Document : contient >
+
+AuthService -- User : gère >
+MessageService -- Message : gère >
+ActualiteService -- Actualite : gère >
+EvenementService -- Evenement : gère >
+CoursService -- Cours : gère >
+
+AuthController -- AuthService : utilise >
+MessageController -- MessageService : utilise >
+ActualiteController -- ActualiteService : utilise >
+EvenementController -- EvenementService : utilise >
+CoursController -- CoursService : utilise >
+
+@enduml

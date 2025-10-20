@@ -3,110 +3,151 @@
 namespace App\Http\Controllers;
 
 use App\Models\Message;
-use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 
 class MessageController extends Controller
 {
-    public function __construct()
+    // Récupérer les messages d'un groupe
+    public function groupConversation($groupId)
     {
-        $this->middleware('auth:api');
-    }
-
-    public function sendMessage(Request $request)
-    {
-        $request->validate([
-            'receiver_id' => 'required|exists:users,id',
-            'content' => 'required|string'
-        ]);
-
-        $message = Message::create([
-            'sender_id' => Auth::id(),
-            'receiver_id' => $request->receiver_id,
-            'content' => $request->content
-        ]);
-
-        return response()->json([
-            'message' => 'Message envoyé avec succès',
-            'data' => $message->load('sender', 'receiver')
-        ]);
-    }
-
-    public function getConversations()
-    {
-        $userId = Auth::id();
-        
-        // Récupérer les utilisateurs avec qui l'utilisateur courant a échangé des messages
-        $conversations = Message::where('sender_id', $userId)
-            ->orWhere('receiver_id', $userId)
+        $messages = Message::where('group_id', $groupId)
+            ->orderBy('created_at')
             ->get()
-            ->map(function ($message) use ($userId) {
-                $otherUserId = $message->sender_id == $userId ? $message->receiver_id : $message->sender_id;
-                return $otherUserId;
-            })
-            ->unique()
-            ->values();
-
-        $users = User::whereIn('id', $conversations)->get()
-            ->map(function ($user) use ($userId) {
-                // Récupérer le dernier message pour chaque conversation
-                $lastMessage = Message::where(function ($query) use ($userId, $user) {
-                    $query->where('sender_id', $userId)
-                        ->where('receiver_id', $user->id)
-                        ->orWhere(function ($query) use ($userId, $user) {
-                            $query->where('sender_id', $user->id)
-                                ->where('receiver_id', $userId);
-                        });
-                })
-                ->latest()
-                ->first();
-
-                return [
-                    'user' => $user,
-                    'last_message' => $lastMessage,
-                    'unread_count' => Message::where('sender_id', $user->id)
-                        ->where('receiver_id', $userId)
-                        ->whereNull('read_at')
-                        ->count()
-                ];
+            ->map(function($msg) {
+                $msgArr = $msg->toArray();
+                $msgArr['sender_name'] = $msg->sender ? ($msg->sender->nom ?? $msg->sender->name) : null;
+                return $msgArr;
             });
-
-        return response()->json($users);
-    }
-
-    public function getMessages($userId)
-    {
-        $messages = Message::where(function ($query) use ($userId) {
-            $query->where('sender_id', Auth::id())
-                ->where('receiver_id', $userId)
-                ->orWhere(function ($query) use ($userId) {
-                    $query->where('sender_id', $userId)
-                        ->where('receiver_id', Auth::id());
-                });
-        })
-        ->with(['sender', 'receiver'])
-        ->orderBy('created_at', 'asc')
-        ->get();
-
-        // Marquer les messages comme lus
-        Message::where('sender_id', $userId)
-            ->where('receiver_id', Auth::id())
-            ->whereNull('read_at')
-            ->update(['read_at' => now()]);
-
         return response()->json($messages);
     }
 
-    public function markAsRead($messageId)
+    // Enregistrer un nouveau message (privé ou groupe)
+    public function store(Request $request)
     {
-        $message = Message::findOrFail($messageId);
-        
-        if ($message->receiver_id !== Auth::id()) {
-            return response()->json(['error' => 'Non autorisé'], 403);
+        $request->validate([
+            'content' => 'required|string',
+            // Un des deux doit être présent
+            'receiver_id' => 'nullable|exists:users,id',
+            'group_id' => 'nullable|exists:groupes,id',
+        ]);
+
+        if (!$request->receiver_id && !$request->group_id) {
+            return response()->json(['error' => 'receiver_id ou group_id requis'], 422);
         }
 
-        $message->update(['read_at' => now()]);
-        return response()->json(['message' => 'Message marqué comme lu']);
+        $message = Message::create([
+            'sender_id' => $request->user()->id,
+            'receiver_id' => $request->receiver_id,
+            'group_id' => $request->group_id,
+            'content' => $request->content,
+        ]);
+
+        // Optionnel: charger les relations pour la réponse
+        $message->load('sender', 'receiver', 'group');
+
+        // Notifier Socket.IO
+        try {
+            $room = null;
+            if ($request->receiver_id) {
+                $room = 'user.' . $request->receiver_id;
+            } elseif ($request->group_id) {
+                $room = 'group.' . $request->group_id;
+            }
+            if ($room) {
+                Http::post('http://localhost:4001/notify-message', [
+                    'room' => $room,
+                    'message' => $message->toArray(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Log::error('Socket.IO notification failed: ' . $e->getMessage());
+        }
+
+        return response()->json($message, 201);
     }
-}
+
+    /**
+     * Retourne les contacts récents (utilisateurs et groupes) de l'utilisateur connecté
+     */
+    public function recentContacts(Request $request)
+    {
+        $userId = $request->user()->id;
+        // Récupérer les conversations privées
+        $privateContacts = Message::where(function($q) use ($userId) {
+                $q->where('sender_id', $userId)
+                  ->orWhere('receiver_id', $userId);
+            })
+            ->whereNotNull('receiver_id')
+            ->orderByDesc('created_at')
+            ->get()
+            ->groupBy(function($msg) use ($userId) {
+                // L'autre utilisateur dans la conversation
+                return $msg->sender_id == $userId ? $msg->receiver_id : $msg->sender_id;
+            })
+            ->map(function($msgs, $otherUserId) {
+                $lastMsg = $msgs->sortByDesc('created_at')->first();
+                $user = $lastMsg->sender_id == $otherUserId ? $lastMsg->sender : $lastMsg->receiver;
+                return [
+                    'id' => $user->id,
+                    'nom' => $user->nom ?? $user->name,
+                    'prenom' => $user->prenom ?? '',
+                    'email' => $user->email,
+                    'last_message' => $lastMsg->content,
+                    'last_date' => $lastMsg->created_at,
+                    '_type' => 'user',
+                ];
+            })->values();
+
+        // Récupérer les groupes où l'utilisateur a envoyé un message
+        $groupContacts = Message::where('sender_id', $userId)
+            ->whereNotNull('group_id')
+            ->orderByDesc('created_at')
+            ->get()
+            ->groupBy('group_id')
+            ->map(function($msgs, $groupId) {
+                $lastMsg = $msgs->sortByDesc('created_at')->first();
+                $group = $lastMsg->group;
+                return [
+                    'id' => $group->id,
+                    'nom' => $group->nom,
+                    'last_message' => $lastMsg->content,
+                    'last_date' => $lastMsg->created_at,
+                    '_type' => 'group',
+                ];
+            })->values();
+
+        // Fusionner et trier par date du dernier message
+        $allContacts = $privateContacts->concat($groupContacts)->sortByDesc('last_date')->values();
+
+        return response()->json($allContacts);
+    }
+
+    /**
+     * Récupérer les messages d'une conversation privée
+     */
+    public function conversation($userId, Request $request)
+    {
+        $currentUserId = $request->user()->id;
+        
+        $messages = Message::where(function($q) use ($currentUserId, $userId) {
+                $q->where('sender_id', $currentUserId)
+                  ->where('receiver_id', $userId);
+            })
+            ->orWhere(function($q) use ($currentUserId, $userId) {
+                $q->where('sender_id', $userId)
+                  ->where('receiver_id', $currentUserId);
+            })
+            ->whereNotNull('receiver_id')
+            ->whereNull('group_id')
+            ->orderBy('created_at')
+            ->get()
+            ->map(function($msg) {
+                $msgArr = $msg->toArray();
+                $msgArr['sender_name'] = $msg->sender ? ($msg->sender->nom ?? $msg->sender->name) : null;
+                return $msgArr;
+            });
+            
+        return response()->json($messages);
+    }
+} 

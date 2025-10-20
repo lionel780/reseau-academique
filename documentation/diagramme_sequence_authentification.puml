@@ -1,0 +1,113 @@
+@startuml Diagramme de Séquence - Authentification Réseau Académique
+
+' Définition des styles
+skinparam sequenceArrowThickness 2
+skinparam sequenceArrowColor #007BFF
+skinparam sequenceLifeLineBorderColor #6C757D
+skinparam sequenceGroupBackgroundColor #F8F9FA
+skinparam sequenceGroupBorderColor #DEE2E6
+
+' Participants
+actor "Utilisateur" as User
+participant "Frontend\nComponent" as Frontend
+participant "AuthService" as AuthService
+participant "Backend\nAuthController" as Backend
+database "Base de données" as DB
+
+' Séquence d'inscription
+group Inscription
+    User -> Frontend : Remplit le formulaire d'inscription
+    activate Frontend
+    Frontend -> AuthService : register(userData)
+    activate AuthService
+    AuthService -> Backend : POST /register
+    activate Backend
+    Backend -> DB : Crée un nouvel utilisateur
+    activate DB
+    DB --> Backend : Utilisateur créé
+    deactivate DB
+    Backend -> Backend : Génère un token JWT
+    Backend --> AuthService : Retourne utilisateur et token
+    deactivate Backend
+    AuthService --> Frontend : Succès de l'inscription
+    deactivate AuthService
+    Frontend --> User : Redirige vers la page de login
+    deactivate Frontend
+end
+
+' Séquence de connexion
+group Connexion
+    User -> Frontend : Remplit le formulaire de connexion
+    activate Frontend
+    Frontend -> AuthService : login(email, password)
+    activate AuthService
+    AuthService -> Backend : POST /login
+    activate Backend
+    Backend -> DB : Vérifie les identifiants
+    activate DB
+    DB --> Backend : Identifiants validés
+    deactivate DB
+    Backend -> Backend : Génère un token JWT
+    Backend --> AuthService : Retourne utilisateur et token
+    deactivate Backend
+    AuthService -> AuthService : Stocke l'utilisateur et le token dans localStorage
+    AuthService --> Frontend : Succès de la connexion
+    deactivate AuthService
+    
+    alt Utilisateur est administrateur
+        Frontend --> User : Redirige vers le dashboard admin
+    else Utilisateur est étudiant ou enseignant
+        Frontend --> User : Redirige vers la page d'actualités
+    end
+    deactivate Frontend
+end
+
+' Séquence de déconnexion
+group Déconnexion
+    User -> Frontend : Clique sur "Déconnexion"
+    activate Frontend
+    Frontend -> AuthService : logout()
+    activate AuthService
+    AuthService -> AuthService : Supprime l'utilisateur et le token du localStorage
+    AuthService --> Frontend : Déconnexion réussie
+    deactivate AuthService
+    Frontend --> User : Redirige vers la page d'accueil
+    deactivate Frontend
+end
+
+' Séquence de consultation du profil
+group Consultation du profil
+    User -> Frontend : Accède à la page de profil
+    activate Frontend
+    Frontend -> AuthService : getCurrentUser()
+    activate AuthService
+    AuthService --> Frontend : Retourne les informations de l'utilisateur
+    deactivate AuthService
+    
+    alt Token expiré ou non valide
+        Frontend -> AuthService : getProfile()
+        activate AuthService
+        AuthService -> Backend : GET /profile avec token JWT
+        activate Backend
+        Backend -> Backend : Vérifie le token JWT
+        
+        alt Token valide
+            Backend -> DB : Récupère les informations de l'utilisateur
+            activate DB
+            DB --> Backend : Informations de l'utilisateur
+            deactivate DB
+            Backend --> AuthService : Retourne les informations de l'utilisateur
+            AuthService --> Frontend : Affiche les informations de l'utilisateur
+        else Token invalide
+            Backend --> AuthService : Erreur d'authentification
+            AuthService --> Frontend : Redirige vers la page de connexion
+        end
+        deactivate Backend
+        deactivate AuthService
+    end
+    
+    Frontend --> User : Affiche le profil de l'utilisateur
+    deactivate Frontend
+end
+
+@enduml
